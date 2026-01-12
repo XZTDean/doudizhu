@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>在线斗地主</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
@@ -206,19 +206,33 @@
     </div>
 
   </div>
-  <script src="/js/vue.min.js"></script>
+  <script src="js/vue.min.js"></script>
   <script src="socket.io/socket.io.js"></script>
-  <script src="/js/jquery.min.js"></script>
-  <script src="/js/layer/layer.js"></script>
-  <script src="/js/parser.js"></script>
+  <script src="js/jquery.min.js"></script>
+  <script src="js/layer/layer.js"></script>
+  <script src="js/parser.js"></script>
   <script>
 
 
 
 
 
-    function createClient(url) {
-      var socket = io.connect('ws://' + url);
+    function getBasePath() {
+      var path = location.pathname || "";
+      if (!path || path === "/") {
+        return "";
+      }
+      var trimmed = path.replace(/\/$/, "");
+      if (trimmed.toLowerCase().endsWith(".html")) {
+        trimmed = trimmed.slice(0, trimmed.lastIndexOf("/"));
+      }
+      return trimmed === "/" ? "" : trimmed;
+    }
+
+    function createClient(url, basePath) {
+      var protocol = location.protocol === "https:" ? "wss://" : "ws://";
+      var socketPath = (basePath || "") + "/socket.io";
+      var socket = io.connect(protocol + url, { path: socketPath });
       return socket;
     }
 
@@ -301,7 +315,8 @@
             self.playCards();
           };
 
-          this.client = createClient(location.host);
+          var basePath = getBasePath();
+          this.client = createClient(location.host, basePath);
 
           this.client.on('MESSAGE', function (data) {
             layer.msg(data.msg);

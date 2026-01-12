@@ -1,11 +1,51 @@
 const express = require('express'),
   app = express(),
-  http = require('http').Server(app),
-  io = require('socket.io')(http);
-app.use(express.static(`${__dirname}/static`));
-app.get('/', function (req, res) {
-  res.sendFile(`${__dirname}/index.html`);
-});
+  http = require('http').Server(app);
+
+function getArgValue(name) {
+  const prefix = `--${name}=`;
+  for (let i = 2; i < process.argv.length; i++) {
+    const arg = process.argv[i];
+    if (arg === `--${name}` && process.argv[i + 1]) {
+      return process.argv[i + 1];
+    }
+    if (arg.startsWith(prefix)) {
+      return arg.slice(prefix.length);
+    }
+  }
+  return '';
+}
+
+function normalizeBasePath(value) {
+  const trimmed = (value || '').trim();
+  if (!trimmed || trimmed === '/') {
+    return '';
+  }
+  const withLeading = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return withLeading.replace(/\/+$/, '');
+}
+
+const basePath = normalizeBasePath(getArgValue('base-path') || process.env.BASE_PATH);
+const socketPath = `${basePath || ''}/socket.io`;
+const io = require('socket.io')(http, { path: socketPath });
+const staticRoot = `${__dirname}/static`;
+const mountPath = basePath || '/';
+const openPath = basePath ? `${basePath}/` : '/';
+
+app.use(mountPath, express.static(staticRoot));
+
+if (basePath) {
+  app.get(basePath, function (req, res) {
+    res.sendFile(`${staticRoot}/index.html`);
+  });
+  app.get(`${basePath}/`, function (req, res) {
+    res.sendFile(`${staticRoot}/index.html`);
+  });
+} else {
+  app.get('/', function (req, res) {
+    res.sendFile(`${staticRoot}/index.html`);
+  });
+}
 const Game = require('./game.js');
 function createDeskList(n) {
   n = n || 50;
@@ -509,7 +549,7 @@ const proto = {
 
     http.listen(this.port, () => {
       console.log(`server is running on port ${this.port}`);
-      (require('os').platform() == 'win32') && require('child_process').exec(`start http://localhost:${this.port}/index.html`);
+      (require('os').platform() == 'win32') && require('child_process').exec(`start http://localhost:${this.port}${openPath}`);
     });
   }
 }
